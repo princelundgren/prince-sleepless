@@ -203,7 +203,8 @@ and executable name.
   battery and Low Power Mode rules, and runs no timer until the user picks one. Found on with the
   helper not approved, it shows "On · Approve in Login Items". At the first launch of a new boot
   session, a flag found on is left over from before the boot (the helper's boot check may not have
-  run yet): the app sends `allowSleep` instead, unless the restart rule below switches it on.
+  run yet): the app sends `allowSleep` instead, unless the restart rule below switches it on. With
+  the helper not approved it can't, so it shows the flag as it does any flag found on.
 - **The auto-off rules** are checked on every power-source event and every Low Power Mode event,
   which can arrive in either order (Low Power Mode can be set per power source and come on at the
   moment of unplugging):
