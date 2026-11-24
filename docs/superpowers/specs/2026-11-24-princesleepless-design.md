@@ -328,7 +328,8 @@ launch at login, the helper's status, Check for Update, the version and a GitHub
   between repositories. The Developer ID certificate, App Store Connect key and Sparkle key are
   reused where they can hold the new app.
 - CI on GitHub-hosted macOS runners (prince-clockin's own VM runner is registered to that repo
-  alone); actions pinned by full commit SHA; Dependabot for Actions and the core package.
+  alone); actions pinned by full commit SHA; Dependabot for Actions and the core package; CodeQL
+  for Swift and the workflows.
 
 ## Left to the builder
 
