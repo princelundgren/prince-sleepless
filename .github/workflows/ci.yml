@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Test the core package
+        run: swift test --package-path PrinceSleeplessCore
+      - run: scripts/install-xcodegen.sh >> "$GITHUB_PATH"
+      - name: Generate the project
+        working-directory: PrinceSleepless
+        run: xcodegen generate
+      - name: Build the app
+        working-directory: PrinceSleepless
+        run: >-
+          xcodebuild -scheme PrinceSleepless -configuration Debug
+          -derivedDataPath ../build/DerivedData CODE_SIGNING_ALLOWED=NO build
+      - name: Check the bundle layout SMAppService needs
+        run: |
+          id=com.princelundgren.princesleepless.helper
+          app=build/DerivedData/Build/Products/Debug/PrinceSleepless.app/Contents
+          test -f "$app/Library/LaunchDaemons/$id.plist"
+          test -x "$app/MacOS/$id"
+          otool -s __TEXT __info_plist "$app/MacOS/$id" | grep -q "$id" \
+            || { echo "$id has no embedded Info.plist naming it" >&2; exit 1; }

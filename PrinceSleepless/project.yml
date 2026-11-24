@@ -1,0 +1,59 @@
+name: PrinceSleepless
+options:
+  bundleIdPrefix: com.princelundgren
+  deploymentTarget:
+    macOS: "26.0"
+configs:
+  Debug: debug
+  Release: release
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  PrinceSleepless:
+    type: application
+    platform: macOS
+    sources:
+      - path: PrinceSleepless
+        excludes: [LaunchDaemons]
+      - path: PrinceSleepless/LaunchDaemons
+        buildPhase:
+          copyFiles:
+            destination: wrapper
+            subpath: Contents/Library/LaunchDaemons
+    settings:
+      base:
+        INFOPLIST_FILE: PrinceSleepless/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.princelundgren.princesleepless
+    dependencies:
+      - target: PrinceSleeplessHelper
+        copy:
+          destination: executables
+      - package: PrinceSleeplessCore
+      - package: Sparkle
+  PrinceSleeplessHelper:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Helper
+    settings:
+      base:
+        PRODUCT_NAME: com.princelundgren.princesleepless.helper
+        PRODUCT_BUNDLE_IDENTIFIER: com.princelundgren.princesleepless.helper
+        INFOPLIST_FILE: Helper/Info.plist
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
+        SKIP_INSTALL: YES
+    dependencies:
+      - package: PrinceSleeplessCore
+packages:
+  PrinceSleeplessCore:
+    path: ../PrinceSleeplessCore
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    # 2.10.1, pinned by commit since a tag can move.
+    revision: ab7d71291238df6e0492143b120c9b696a35f603
