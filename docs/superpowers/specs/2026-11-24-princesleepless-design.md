@@ -1,7 +1,7 @@
 ---
 status: building
 governs: [PrinceSleepless/**, PrinceSleeplessCore/**, scripts/**, .github/workflows/**, .github/dependabot.yml]
-verified: 2026-11-24
+verified: 2026-11-25
 ---
 
 # PrinceSleepless: design
@@ -240,7 +240,8 @@ and executable name.
   launch it switches on again, through the normal path with every rule armed, only if "Stay on
   after a restart" is set, "on at power-off" is recorded, and the boot session differs (so a
   logout or a cancelled shutdown doesn't count). A saved timer end resumes, or switches off at once
-  if it has passed. Every switch-off and every launch clears the record.
+  if it has passed. A run the schedule started stays the schedule's, so its window's end still
+  switches it off. Every switch-off and every launch clears the record.
 - **Launch at login** through `SMAppService.mainApp`, off by default; turning on "Stay on after a
   restart" turns it on too, and the setting does nothing while launch at login is off.
 - **Updates while on:** Sparkle's `updater(_:shouldPostponeRelaunchForUpdate:untilInvokingBlock:)`
@@ -266,12 +267,13 @@ and executable name.
   that the user switched on inside the window with a timer. A run the user switched on "until
   turned off" stays on past the end. **Notify me:** each boundary sends a notification whose Turn
   On or Turn Off action does that, whatever the current state.
-- **Catch-up** after a wake or a launch: only the latest missed boundary counts. A start whose
-  window has already ended is skipped; inside a window, Automatic switches on.
-- **What overrides it:** a manual switch-off, or an auto-off rule, inside a window holds until the
-  next window's start; the hold is saved, so a relaunch inside the window keeps it. A start while
-  the battery floor or Low Power Mode holds stays off, with the reason. An Automatic start with the
-  helper not approved sends a notification asking for approval.
+- **Catch-up** after a wake, a clock or time-zone change, a launch, or a boundary timer that fires
+  late: only the latest missed boundary counts. A start whose window has already ended is skipped;
+  inside a window, Automatic switches on.
+- **What overrides it:** a manual switch-off, the timer's end, or an auto-off rule, inside a window
+  holds until the next window's start; the hold is saved, so a relaunch inside the window keeps it.
+  A start while the battery floor or Low Power Mode holds stays off, with the reason. An Automatic
+  start with the helper not approved sends a notification asking for approval.
 - **With a timer:** whichever ends first switches off.
 
 ### The panel

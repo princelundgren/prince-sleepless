@@ -57,7 +57,7 @@ public enum RunOrigin: String, Equatable, Sendable, Codable {
     case schedule
     /// A flag found on that the app took over.
     case adopted
-    /// Switched on again at launch after a restart.
+    /// Switched on again at launch after a restart; a run the schedule started keeps `.schedule`.
     case restored
 }
 
@@ -79,6 +79,9 @@ public struct ControllerState: Equatable, Sendable, Codable {
     /// The helper guards the flag, so it clears the flag if the app goes away.
     public var guarded = false
     public var origin: RunOrigin?
+    /// When the current run was switched on; the schedule's end switches off a timer run only
+    /// when this falls inside the window that is ending.
+    public var runStartedAt: Date?
     public var timerEnd: Date?
     public var lastActedBoundary: Boundary?
     public var holdOffUntil: Date?
@@ -98,6 +101,7 @@ public struct ControllerState: Equatable, Sendable, Codable {
         flagOn: Bool = false,
         guarded: Bool = false,
         origin: RunOrigin? = nil,
+        runStartedAt: Date? = nil,
         timerEnd: Date? = nil,
         lastActedBoundary: Boundary? = nil,
         holdOffUntil: Date? = nil,
@@ -111,6 +115,7 @@ public struct ControllerState: Equatable, Sendable, Codable {
         self.flagOn = flagOn
         self.guarded = guarded
         self.origin = origin
+        self.runStartedAt = runStartedAt
         self.timerEnd = timerEnd
         self.lastActedBoundary = lastActedBoundary
         self.holdOffUntil = holdOffUntil
@@ -159,11 +164,14 @@ public enum Event: Sendable {
     case lowPowerMode(Bool)
     case batteryCheckDue(PowerSnapshot)
     case timerFired
+    /// The boundary timer fired. The controller decides by the time it is given, so a fire that
+    /// comes late acts on the latest boundary at that time, not on the one it carries.
     case boundary(Boundary, Readings)
     case woke(Readings)
     case clockChanged(Readings)
     case preferencesChanged(Preferences)
     case willPowerOff(bootSession: UUID)
+    /// The app is quitting. Answered with `.save`, the point at which the app records a clean quit.
     case willTerminate
     case updateReady
 }
