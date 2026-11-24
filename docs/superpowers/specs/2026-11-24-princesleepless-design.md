@@ -258,8 +258,9 @@ and executable name.
 - One timer to the next boundary, with a tolerance of at most 30 s, recomputed after each one
   fires, after a wake, and after a clock or time-zone change. While off with no schedule set, the
   app holds no timer.
-- Each boundary acts once: the app saves the last boundary it acted on, and a boundary at or before
-  it does nothing, including the repeated 02:30 of a daylight-saving fall-back night.
+- Each boundary acts once: the app saves the last boundary it acted on; a boundary at or before it
+  does nothing, and within one window only its start and then its end act, so the repeated hour of
+  a daylight-saving fall-back night acts once.
 - **Automatic:** the start switches on; the end switches off a run that the start switched on, or
   that the user switched on inside the window with a timer. A run the user switched on "until
   turned off" stays on past the end. **Notify me:** each boundary sends a notification whose Turn
