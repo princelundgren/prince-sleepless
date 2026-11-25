@@ -15,8 +15,10 @@ Everything in this repository is public: code, docs, commit messages, issues and
   flag at every boot.
 - **Changes land through a pull request**, with signed commits.
 - **CI runs on GitHub's `xcode-27` runner.** Every action is pinned by full commit SHA, except the
-  Claude review: it calls the shared reusable workflow at its moving `v1` tag, since only that
-  repository's maintainer can move its `v*` tags.
+  Claude review: it calls the shared reusable workflow at its moving `v2` tag, since only that
+  repository's maintainer can move its `v*` tags. The workflow reads the Claude token from AWS
+  Systems Manager over GitHub OIDC, so this repository holds a `CI_SECRETS_AWS_ACCOUNT` secret,
+  not a token.
 - **CodeQL scans Swift and the workflows** (`.github/workflows/codeql.yml`). Its Swift scan runs on
   `macos-26` with Xcode 26.6, since CodeQL can't trace a build with Xcode 27.
 - **Build and test** from the repository root:
