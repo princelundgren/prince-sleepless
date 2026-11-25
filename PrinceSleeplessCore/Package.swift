@@ -9,6 +9,11 @@ let package = Package(
     ],
     targets: [
         .target(name: "PrinceSleeplessCore", swiftSettings: [.swiftLanguageMode(.v6)]),
+        .executableTarget(
+            name: "print-requirement",
+            dependencies: ["PrinceSleeplessCore"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
         .testTarget(name: "PrinceSleeplessCoreTests", dependencies: ["PrinceSleeplessCore"])
     ]
 )

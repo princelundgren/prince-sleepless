@@ -17,7 +17,9 @@ holds a sleep assertion (`caffeinate`, KeepingYouAwake). The one setting that ov
 `pmset -a disablesleep 1`, which sets `SleepDisabled` on the IORegistry's `IOPMrootDomain` and needs
 root. It is undocumented: `man pmset` doesn't list it, so a macOS update could drop it. `pmset`
 saves it to `/Library/Preferences/com.apple.PowerManagement.plist` (`SystemPowerSettings` →
-`SleepDisabled`), so it may survive a restart; this design doesn't rely on either answer.
+`SleepDisabled`), so it may survive a restart; this design doesn't rely on either answer. The kernel
+publishes `SleepDisabled` (a boolean) only once a client has set it, so a missing key reads as 0
+(`IOPMrootDomain::setProperties` in xnu).
 
 Sleepless (github.com/Aboudjem/Sleepless, MIT) wraps it in a menu bar switch, but:
 
@@ -185,8 +187,13 @@ and executable name.
   `kern.bootsessionuuid` it saw (`/Library/Application Support/PrinceSleepless/`, directory 0700,
   file 0600, written atomically). Before resuming its listener it compares: a different UUID is a
   new boot, and it sets the flag to 0; a missing file is a registration, not a boot, so a flag the
-  user is about to adopt stays. Either way it then stores the current UUID. A file that won't
-  decode counts as a new boot.
+  user is about to adopt stays. Either way it then stores the current UUID, unless a clear failed,
+  so the next launch retries it. A file that won't decode counts as a new boot. With
+  `kern.bootsessionuuid` unreadable, it logs and exits without resuming. A failed store is logged
+  as a fault and the helper carries on; the file keeps its last value, so while stores keep
+  failing, a missing file means no boot clears the flag and a stale one means every launch does.
+  The boot check runs before the team lookup, so it clears the flag even when the listener won't
+  resume.
 
 ### The app
 
