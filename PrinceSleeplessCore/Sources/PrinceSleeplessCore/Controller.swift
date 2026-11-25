@@ -7,6 +7,10 @@ public struct Controller: Sendable {
     public var preferences: Preferences
     /// The helper's registration as last read; not saved, since the system holds it.
     public var helper: HelperStatus
+    /// The helper commands returned and not yet replied to. A flag read while any is outstanding
+    /// is ignored, since the flag may still change; the read after the last reply counts. Not
+    /// saved: no call outlives the app.
+    private var outstandingHelperCalls = 0
 
     /// Stores `preferences` clamped, as `Preferences.clamped()` holds them.
     public init(state: ControllerState, preferences: Preferences, helper: HelperStatus) {
@@ -31,11 +35,19 @@ public struct Controller: Sendable {
         case .launched(let info):
             commands = launched(info, now: now, calendar: calendar)
         case .flagRead(let flagOn):
-            commands = flagRead(flagOn, now: now, calendar: calendar)
+            commands = outstandingHelperCalls > 0 ? [] : flagRead(flagOn, now: now, calendar: calendar)
         case .helper(let status):
             commands = helperChanged(to: status, now: now, calendar: calendar)
         case .helperReplied(let ok):
+            outstandingHelperCalls -= 1
             commands = ok ? [] : helperFailed()
+        case .helperInterrupted:
+            commands = isProtected ? [.reguard] : []
+        case .guardLost:
+            outstandingHelperCalls -= 1
+            commands = guardLost()
+        case .helperOutdated:
+            commands = helperOutdated()
         case .tapped(let readings):
             commands = toggle(readings, now: now, calendar: calendar)
         case .picked(let duration, let readings):
@@ -61,6 +73,7 @@ public struct Controller: Sendable {
         case .willTerminate:
             commands = [.save]
         }
+        outstandingHelperCalls += commands.count { [.keepAwake, .allowSleep, .reguard].contains($0) }
         if state != stateBefore || preferences != preferencesBefore {
             commands.append(.save)
         }
@@ -139,9 +152,13 @@ public struct Controller: Sendable {
         }
     }
 
+    /// Guards a run that is on but unguarded once the helper is enabled. Only a lost guard leaves
+    /// a run of the app's own unguarded, so any origin but `.adopted` gets a re-guard that keeps
+    /// the run's origin, timer and schedule.
     private mutating func helperChanged(to status: HelperStatus, now: Date, calendar: Calendar) -> [Command] {
         helper = status
         guard status == .enabled, state.flagOn, !state.guarded else { return [] }
+        guard state.origin == .adopted else { return guardRun(nil, sending: .reguard) }
         return adopt(nil, now: now, calendar: calendar)
     }
 
@@ -154,6 +171,22 @@ public struct Controller: Sendable {
             commands = state.origin == .adopted ? release() : markOff()
         }
         return commands + [.notify(.couldNotChange)]
+    }
+
+    /// Keeps the run on, with its origin and timer, since the flag still reads 1; only the guard
+    /// and the rules that need it end.
+    private mutating func guardLost() -> [Command] {
+        guard isProtected else { return [] }
+        return release() + [.notify(.couldNotChange)]
+    }
+
+    /// Unregistering ends the helper, so a run that is on waits for its switch-off.
+    private mutating func helperOutdated() -> [Command] {
+        guard !state.flagOn else {
+            state.reregisterPending = true
+            return []
+        }
+        return [.reregisterHelper]
     }
 
     private mutating func toggle(_ readings: Readings, now: Date, calendar: Calendar) -> [Command] {
@@ -367,12 +400,12 @@ public struct Controller: Sendable {
         state.lastOffReason = nil
     }
 
-    private mutating func guardRun(_ power: PowerSnapshot?) -> [Command] {
+    private mutating func guardRun(_ power: PowerSnapshot?, sending call: Command = .keepAwake) -> [Command] {
         state.guarded = true
         state.lastPower = power
         state.lowPowerModeCameOn = false
         return [
-            .keepAwake,
+            call,
             .observePower(true),
             .holdActivity(true),
             .armBatteryCheck(batteryCheck(for: power)),

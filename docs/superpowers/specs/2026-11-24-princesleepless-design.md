@@ -47,7 +47,9 @@ sleeps normally.
   returns or Low Power Mode ends, and a notification says why (owner, 2026-11-24).
 - **A flag it didn't set is adopted:** found on (set by hand with `pmset`, or by another app), it
   shows as on, and every auto-off rule and the crash safety apply to it (owner, 2026-11-24).
-- **Crash safety:** if the app quits, crashes or is killed while on, sleep is turned back on.
+- **Crash safety:** if the app quits, crashes or is killed while on, sleep is turned back on. The
+  one gap: a run whose helper died and couldn't be made to guard it again, which the app shows
+  ("The helper", Crash safety).
 - **Restarts clear it; one setting brings it back at login:** "Stay on after a restart", off by
   default. Every boot starts with the flag at 0. With the setting on, an app that was on when the
   Mac restarted or shut down switches on again when it launches at login, with every rule armed
@@ -166,7 +168,7 @@ and executable name.
   ad-hoc signature can claim.
 - **Its interface** (Bools and Ints only):
   - `protocolVersion`: an Int; the app refuses to call a helper whose version differs, and
-    re-registers it;
+    re-registers it once the flag is off;
   - `keepAwake`: sets the flag to 1 if it isn't, and guards this connection; the same call adopts a
     flag that is already on;
   - `allowSleep`: sets the flag to 0 and stops guarding this connection.
@@ -180,7 +182,10 @@ and executable name.
   - on SIGTERM it does the same before exiting (a `DispatchSource` signal source, with
     `signal(SIGTERM, SIG_IGN)` at the top of `main`, since a dispatch source installs no handler);
   - if the helper dies while on, the app's `interruptionHandler` reconnects and sends `keepAwake`
-    again at once; an invalidated connection is replaced with a new one;
+    again at once; an invalidated connection is replaced with a new one, which sends it the same
+    way. If that re-guard fails, the run stays on with its timer but unguarded, its battery and
+    Low Power Mode rules stop, and the app shows "Couldn't change sleep"; each panel open then
+    re-guards it the same way, keeping its timer and schedule;
   - with no guarding connection and the flag at 0, it exits a few seconds after its last reply;
     launchd starts it on the next request.
 - **At boot:** `RunAtLoad` also runs the job at registration, approval and re-registration
@@ -200,10 +205,13 @@ and executable name.
 
 - **State** comes from the system, not from memory: the app reads `SleepDisabled` from
   `IOPMrootDomain` through IOKit, without root and without a subprocess. There are two states, on
-  and off, and on is either protected (the helper guards it) or not yet ("Approve in Login Items").
+  and off, and on is either protected (the helper guards it) or not: not yet approved ("Approve in
+  Login Items"), or a re-guard after the helper died failed (Crash safety, above).
 - **When it reads the flag:** at launch, on each panel open, after each change it makes, on
   `NSWorkspace.didWakeNotification`, while on at each power-source event, and on each timer or
-  schedule event. The builder tests whether powerd's notify(3) key
+  schedule event. A read while a helper call is outstanding waits for the last reply: the
+  controller ignores it, since the flag may still change, and the read after that reply counts.
+  The builder tests whether powerd's notify(3) key
   `com.apple.system.powermanagement.prefschange` (not in a public header) fires when the flag
   changes; if it does, the app observes it always, which costs nothing while idle. Without it, a
   flag set by someone else while the app runs shows only at the next of those moments.
