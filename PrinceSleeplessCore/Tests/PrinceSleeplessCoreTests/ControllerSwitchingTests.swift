@@ -21,6 +21,7 @@ final class ControllerSwitchingTests: XCTestCase {
     private func switchedOn(_ power: PowerSnapshot? = nil, preferences: Preferences = Preferences()) -> Controller {
         var controller = controller(preferences: preferences)
         _ = controller.send(.tapped(readings(power ?? charger)))
+        _ = controller.send(.helperReplied(ok: true))
         XCTAssertTrue(controller.isProtected)
         return controller
     }

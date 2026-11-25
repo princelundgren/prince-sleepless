@@ -226,6 +226,7 @@ final class ControllerSchedulingTests: XCTestCase {
         var controller = controller(schedule: workdays)
         let start = boundary(.start, at: monday("08:00"))
         _ = send(.boundary(start, readings()), to: &controller, at: monday("08:00"))
+        _ = send(.helperReplied(ok: true), to: &controller, at: monday("08:00"))
         _ = send(.flagRead(false), to: &controller, at: monday("08:00"))
 
         let again = send(.boundary(start, readings()), to: &controller, at: monday("08:00"))

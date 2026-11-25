@@ -11,7 +11,7 @@ public enum HelperStatus: Equatable, Sendable, Codable {
 /// A fresh read of the power state, sent with the launch, a user's switch and the schedule's
 /// events. `.flagRead` and `.helper` carry none: an adoption from them arms a battery check at once.
 public struct Readings: Equatable, Sendable {
-    /// `nil` when the power source couldn't be read.
+    /// `nil` when the Mac has no internal battery or the power source couldn't be read.
     public var power: PowerSnapshot?
     public var lowPowerMode: Bool
 
@@ -155,8 +155,16 @@ public enum Event: Sendable {
     case launched(LaunchInfo)
     case flagRead(Bool)
     case helper(HelperStatus)
-    /// The helper's reply to the last `keepAwake` or `allowSleep`.
+    /// The helper's reply to the oldest `keepAwake`, `allowSleep` or `reguard` not yet replied
+    /// to; a failed `reguard` comes as `.guardLost` instead. The app sends exactly one of the two
+    /// for each of those commands, in the order they were returned.
     case helperReplied(ok: Bool)
+    /// The helper process exited, or its connection was invalidated.
+    case helperInterrupted
+    /// A `reguard` failed: the flag is still on, and nothing guards it.
+    case guardLost
+    /// The helper reports a protocol version other than this build's.
+    case helperOutdated
     case tapped(Readings)
     case picked(KeepAwakeDuration, Readings)
     case notificationAction(turnOn: Bool, Readings)
@@ -184,6 +192,8 @@ public enum Command: Equatable, Sendable {
     case openLoginItems
     case keepAwake
     case allowSleep
+    /// Send `keepAwake` again for a run already on, after the helper was interrupted.
+    case reguard
     case observePower(Bool)
     case holdActivity(Bool)
     /// Seconds until the next battery check, or `nil` to cancel it.
