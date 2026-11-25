@@ -145,11 +145,14 @@ and executable name.
   An unasked registration would show macOS's "background item added" notice. While its status is
   `.requiresApproval` (or `.notFound` after a failed registration) the status line reads "Approve
   in Login Items" and a click on it opens System Settings; approval has no callback, so the app
-  re-reads the status on each panel open, and the user taps the disc again once approved.
+  re-reads the status on each panel open, and the user taps the disc again once approved. On
+  macOS 26, `register()` throws "Operation not permitted" while approval is needed, and approving
+  in Login Items asks for an administrator's password.
 - **After an update:** `SMAppService.h` says a changed helper executable "must be re-registered or
   it may not launch", and recommends `unregister` first; `unregister` kills a running helper. So
   when the stored build number differs from the app's, the app calls `unregister(completionHandler:)`
-  and then `register()` while the flag is off: at launch, or at the next switch-off.
+  and then `register()` while the flag is off: at launch, or at the next switch-off. On macOS 26
+  this asks for no new approval and shows no notice.
 - **Who may connect:** `NSXPCListener.setConnectionCodeSigningRequirement(_:)` (macOS 13) on the
   listener, so any other process is refused "before consulting the delegate". The requirement, in
   Release builds, is Developer ID's designated-requirement shape, bound to the helper's own team:
@@ -181,6 +184,7 @@ and executable name.
     crashed or was killed), it sets the flag to 0 if `SleepDisabled` reads 1;
   - on SIGTERM it does the same before exiting (a `DispatchSource` signal source, with
     `signal(SIGTERM, SIG_IGN)` at the top of `main`, since a dispatch source installs no handler);
+    on macOS 26, revoking approval in Login Items also ends a running helper this way;
   - if the helper dies while on, the app's `interruptionHandler` reconnects and sends `keepAwake`
     again at once; an invalidated connection is replaced with a new one, which sends it the same
     way. If that re-guard fails, the run stays on with its timer but unguarded, its battery and
@@ -199,7 +203,8 @@ and executable name.
   as a fault and the helper carries on; the file keeps its last value, so while stores keep
   failing, a missing file means no boot clears the flag and a stale one means every launch does.
   The boot check runs before the team lookup, so it clears the flag even when the listener won't
-  resume.
+  resume. The flag survives a restart: on macOS 26 it reads on from boot until that check, about
+  6 seconds after boot and before anyone logs in.
 
 ### The app
 
@@ -211,10 +216,10 @@ and executable name.
   `NSWorkspace.didWakeNotification`, while on at each power-source event, and on each timer or
   schedule event. A read while a helper call is outstanding waits for the last reply: the
   controller ignores it, since the flag may still change, and the read after that reply counts.
-  The builder tests whether powerd's notify(3) key
-  `com.apple.system.powermanagement.prefschange` (not in a public header) fires when the flag
-  changes; if it does, the app observes it always, which costs nothing while idle. Without it, a
-  flag set by someone else while the app runs shows only at the next of those moments.
+  powerd's notify(3) key `com.apple.system.powermanagement.prefschange` (not in a public header)
+  fires on macOS 26 at every `pmset` settings write, including one that leaves the flag as it was
+  and one of another setting, so it says only that the flag may have changed: the app observes it
+  always and reads the flag on it, which costs nothing while idle.
 - **Found on, the flag is adopted:** with the helper approved, the app sends `keepAwake`, arms the
   battery and Low Power Mode rules, and runs no timer until the user picks one. Found on with the
   helper not approved, it shows "On · Approve in Login Items". At the first launch of a new boot
@@ -358,7 +363,6 @@ launch at login, the helper's status, Check for Update, the version and a GitHub
 - The battery check's exact spacing and the unknown-estimate interval, within "about half the
   time to the floor, at least a minute".
 - The XPC protocol's exact shape and the helper's state file name.
-- Confirming on macOS 26 and 27, before building what depends on each: that the helper runs at
-  boot and clears the flag; whether the `prefschange` notify key fires on a flag change; what
-  revoking approval does to a running helper; whether an unregister and register after each update
-  asks an admin to approve again or shows the "background item added" notice.
+- macOS 27 is unchecked. Confirming on it what a macOS 26.6 virtual machine showed, as recorded
+  above: the boot clear and its delay, the `prefschange` key, revocation ending the helper with
+  SIGTERM, and re-registration after an update.
