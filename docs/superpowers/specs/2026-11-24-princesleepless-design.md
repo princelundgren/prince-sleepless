@@ -126,7 +126,8 @@ How a restart is handled:
   `.xcodeproj` is not committed.
 - `PrinceSleeplessCore/`: a Swift package with every decision that can be tested without the
   system: the schedule, the timer, the auto-off rules, the battery check's spacing, the controller
-  that turns events into commands, the helper's guard count and boot check, the status text.
+  that turns events into commands, the helper's guard count and boot check, the status text; and
+  the two system reads the app and the helper share, the sleep flag and the boot session.
 - `scripts/`, `docs/superpowers/specs/` (this file), `AGENTS.md`, `README.md`, `LICENSE`.
 
 Bundle IDs: `com.princelundgren.princesleepless` and, for the helper,

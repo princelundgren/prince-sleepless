@@ -1,26 +1,9 @@
 import Foundation
-import IOKit
 import PrinceSleeplessCore
 
-/// The system's sleep-disabled flag: `SleepDisabled` on the IORegistry's `IOPMrootDomain`, set
-/// through `pmset`.
+/// Sets the system's sleep-disabled flag through `pmset`; `SleepFlagReader` reads it.
 enum SleepFlag {
     private static let pmsetTimeout: DispatchTimeInterval = .seconds(10)
-
-    /// The flag as it reads now, or `nil` when `IOPMrootDomain` or its value can't be read.
-    static func read() -> Bool? {
-        let rootDomain = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
-        guard rootDomain != IO_OBJECT_NULL else {
-            helperLog.error("IOPMrootDomain not found; the sleep flag can't be read")
-            return nil
-        }
-        defer { IOObjectRelease(rootDomain) }
-        // The kernel publishes the key only once a client has set it, so absent means 0.
-        guard let value = IORegistryEntryCreateCFProperty(rootDomain, "SleepDisabled" as CFString, kCFAllocatorDefault, 0)?
-            .takeRetainedValue()
-        else { return false }
-        return value as? Bool
-    }
 
     /// Runs `pmset` to set the flag, waiting at most `pmsetTimeout` for it to exit. Returns `true`
     /// when it exited 0; logs the failure otherwise. Doesn't read the flag back.

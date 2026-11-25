@@ -54,9 +54,9 @@ final class HelperService: @unchecked Sendable {
     func keepAwake(connection id: Int, reply: @escaping @Sendable (Bool) -> Void) {
         queue.async { [self] in
             cancelIdleExit()
-            let flagBefore = SleepFlag.read()
+            let flagBefore = SleepFlagReader.read()
             let flagSet = flagBefore == true || SleepFlag.set(disableSleep: true)
-            let awake = flagSet && SleepFlag.read() == true
+            let awake = flagSet && SleepFlagReader.read() == true
             if awake {
                 book.guardConnection(id)
             } else {
@@ -73,7 +73,7 @@ final class HelperService: @unchecked Sendable {
     func allowSleep(connection id: Int, reply: @escaping @Sendable (Bool) -> Void) {
         queue.async { [self] in
             cancelIdleExit()
-            let sleepAllowed = SleepFlag.set(disableSleep: false) && SleepFlag.read() == false
+            let sleepAllowed = SleepFlag.set(disableSleep: false) && SleepFlagReader.read() == false
             if !sleepAllowed {
                 helperLog.error("Couldn't allow sleep for connection \(id)")
             }
@@ -109,8 +109,8 @@ final class HelperService: @unchecked Sendable {
     /// Sets the flag to 0 unless it already reads 0. Returns `true` when it reads 0 afterwards.
     @discardableResult
     private func restoreSleep() -> Bool {
-        guard SleepFlag.read() != false else { return true }
-        let restored = SleepFlag.set(disableSleep: false) && SleepFlag.read() == false
+        guard SleepFlagReader.read() != false else { return true }
+        let restored = SleepFlag.set(disableSleep: false) && SleepFlagReader.read() == false
         if !restored {
             helperLog.error("Couldn't restore sleep")
         }
@@ -122,7 +122,7 @@ final class HelperService: @unchecked Sendable {
     private func armIdleExit() {
         pendingIdleExit?.cancel()
         let idleExit = DispatchWorkItem { [self] in
-            guard book.isEmpty, SleepFlag.read() == false else { return }
+            guard book.isEmpty, SleepFlagReader.read() == false else { return }
             helperLog.info("Idle; exiting")
             exit(EXIT_SUCCESS)
         }
