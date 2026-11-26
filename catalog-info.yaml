@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: prince-sleepless
+  description: macOS menu bar app that keeps a MacBook awake with the lid closed
+spec:
+  type: app
+  lifecycle: experimental
+  owner: prince
+  system: apps
